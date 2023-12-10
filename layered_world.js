@@ -53,7 +53,7 @@ export class LayeredWorld {
     /**
      * Execute a function for each entity in the given layers.
      * @param {(entity: Entity) => void} fn
-     * @param  {...*} layers 
+     * @param {...*} layers 
      */
     forEachEntityIn(fn, ...layers) {
         layers.forEach((layer) => {
@@ -100,7 +100,7 @@ class Entity {
      */
     constructor(layer, components) {
         this._layer = layer;
-        this.#components = null;
+        this.#components = {};
         this.#nextComponents = components;
     }
 
