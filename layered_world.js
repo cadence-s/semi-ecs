@@ -5,11 +5,7 @@ export class LayeredWorld {
     #layers;
     #nextLayers;
 
-    /**
-     * @param {Map<string, object>} components
-     */
-    constructor(components) {
-        this.components = components;
+    constructor() {
         this.#layers = new Map();
         this.#nextLayers = new Map();
     }
