@@ -57,7 +57,9 @@ export class LayeredWorld {
      */
     forEachEntityIn(fn, ...layers) {
         layers.forEach((layer) => {
-            this.#layers.get(layer).forEach(fn);
+            if (this.#layers.has(layer)) {
+                this.#layers.get(layer).forEach(fn);
+            }
         });
     }
 
