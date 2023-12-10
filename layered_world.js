@@ -69,4 +69,13 @@ class Entity {
         this._layer = layer;
         Object.assign(this, components);
     }
+
+    /**
+     * Check if the entity has a component.
+     * @param {*} component 
+     * @returns {boolean}
+     */
+    has(component) {
+        return this.hasOwnProperty(component);
+    }
 }
