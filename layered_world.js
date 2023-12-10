@@ -60,14 +60,14 @@ export class LayeredWorld {
     }
 
     /**
-     * Apply all changes made to the world.
+     * Apply all changes to the world and its entities.
      * 
      * Use this at the end of a processing frame.
      */
     applyChanges() {
         this.#layers = this.#nextLayers;
         this.forEachEntity((entity) => {
-            entity._components = entity._nextComponents;
+            entity.applyChanges();
         });
     }
 
@@ -83,14 +83,23 @@ export class LayeredWorld {
  */
 class Entity {
     /**
-     * Do not use this constructor. Instead, create entities in a world with createEntity().
+     * The layer this entity is in. Do not write to this property.
+     * @readonly
+     */
+    _layer;
+
+    #components;
+    #nextComponents;
+
+    /**
+     * Do not use this constructor. Instead, create entities in a world with LayeredWorld.createEntity().
      * @param {*} layer
      * @param {Map<string, object>} components
      */
     constructor(layer, components) {
         this._layer = layer;
-        this._components = null;
-        this._nextComponents = components;
+        this.#components = null;
+        this.#nextComponents = components;
     }
 
     /**
@@ -99,7 +108,7 @@ class Entity {
      * @returns {boolean}
      */
     has(component) {
-        return this._components.hasOwnProperty(component);
+        return this.#components.hasOwnProperty(component);
     }
 
     /**
@@ -107,7 +116,7 @@ class Entity {
      * @param {string} component
      */
     add(component) {
-        this._nextComponents[component] = null;
+        this.#nextComponents[component] = null;
     }
 
     /**
@@ -115,7 +124,7 @@ class Entity {
      * @param {string} component
      */
     remove(component) {
-        delete this._nextComponents[component];
+        delete this.#nextComponents[component];
     }
 
     /**
@@ -125,7 +134,7 @@ class Entity {
      * @returns {*}
      */
     get(component, property) {
-        return this._components[component][property];
+        return this.#components[component][property];
     }
 
     /**
@@ -135,6 +144,15 @@ class Entity {
      * @param {*} value
      */
     set(component, property, value) {
-        this._nextComponents[component][property] = value;
+        this.#nextComponents[component][property] = value;
+    }
+
+    /**
+     * Apply all changes to the entity.
+     * 
+     * Prefer using LayeredWorld.applyChanges() rather than this method.
+     */
+    applyChanges() {
+        this.#components = this.#nextComponents;
     }
 }
