@@ -10,7 +10,7 @@ export class LayeredWorld {
 
     #layers;
     #nextLayers;
-    #nextEntityCount;
+    #nextEntityCount = 0;
 
     constructor() {
         this.#layers = new Map();
