@@ -45,7 +45,7 @@ export class LayeredWorld {
     moveEntity(entity, targetLayer) {
         this.#pokeLayer(targetLayer);
         this.destroyEntity(entity);
-        entity.layer = targetLayer;
+        entity.nextLayer = targetLayer;
         this.#nextLayers.get(targetLayer).add(entity);
     }
 
@@ -79,9 +79,15 @@ export class LayeredWorld {
      */
     applyChanges() {
         this.#layers = this.#nextLayers;
-        this.forEachEntity((entity) => {
-            entity.applyChanges();
-        });
+        this.#nextLayers = new Map();
+        this.#layers.forEach((v, k) => {
+            let newSet = new Set();
+            v.forEach((entity) => {
+                entity.applyChanges();
+                newSet.add(entity);
+            })
+            this.#nextLayers.set(k, newSet);
+        })
         this.entityCount = this.#nextEntityCount;
     }
 
@@ -97,10 +103,15 @@ export class LayeredWorld {
  */
 class Entity {
     /**
-     * The layer this entity is in.
+     * The layer the entity is in.
      * @readonly
      */
     layer;
+    /**
+     * The layer the entity will be in after changes are applied.
+     * @readonly
+     */
+    nextLayer;
 
     #components;
     #nextComponents;
@@ -111,7 +122,8 @@ class Entity {
      * @param {Map<string, object>} components
      */
     constructor(layer, components) {
-        this.layer = layer;
+        this.layer = null;
+        this.nextLayer = layer;
         this.#components = {};
         this.#nextComponents = components;
     }
@@ -167,6 +179,7 @@ class Entity {
      * Prefer using LayeredWorld.applyChanges() rather than this method.
      */
     applyChanges() {
+        this.layer = this.nextLayer;
         this.#components = this.#nextComponents;
     }
 }
