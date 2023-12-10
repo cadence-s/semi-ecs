@@ -3,6 +3,7 @@
  */
 export class LayeredWorld {
     #layers;
+    #nextLayers;
 
     /**
      * @param {Map<string, object>} components
@@ -10,6 +11,7 @@ export class LayeredWorld {
     constructor(components) {
         this.components = components;
         this.#layers = new Map();
+        this.#nextLayers = new Map();
     }
 
     /**
@@ -18,8 +20,8 @@ export class LayeredWorld {
      * @param {Map<string, object>} components The components that make up the entity.
      */
     createEntity(layer, components) {
-        this.#pokeLayer();
-        this.#layers.get(layer).add(new Entity(layer, components));
+        this.#pokeLayer(layer);
+        this.#nextLayers.get(layer).add(new Entity(layer, components));
     }
 
     /**
@@ -27,7 +29,19 @@ export class LayeredWorld {
      * @param {*} entity
      */
     destroyEntity(entity) {
-        this.#layers.get(entity._layer).delete(entity);
+        this.#nextLayers.get(entity._layer).delete(entity);
+    }
+
+    /**
+     * Moves an entity to a different layer.
+     * @param {Entity} entity
+     * @param {*} targetLayer
+     */
+    moveEntity(entity, targetLayer) {
+        this.#pokeLayer(targetLayer);
+        this.destroyEntity(entity);
+        entity._layer = targetLayer;
+        this.#nextLayers.get(targetLayer).add(entity);
     }
 
     /**
@@ -49,9 +63,21 @@ export class LayeredWorld {
         this.#layers.get(layer).forEach(fn);
     }
 
+    /**
+     * Apply all changes made to the world.
+     * 
+     * Use this at the end of a processing frame.
+     */
+    applyChanges() {
+        this.#layers = this.#nextLayers;
+        this.forEachEntity((entity) => {
+            entity._components = entity._nextComponents;
+        });
+    }
+
     #pokeLayer(layer) {
-        if (!this.#layers.has(layer)) {
-            this.#layers.set(layer, new Set());
+        if (!this.#nextLayers.has(layer)) {
+            this.#nextLayers.set(layer, new Set());
         }
     }
 }
@@ -67,7 +93,8 @@ class Entity {
      */
     constructor(layer, components) {
         this._layer = layer;
-        Object.assign(this, components);
+        this._components = null;
+        this._nextComponents = components;
     }
 
     /**
@@ -76,6 +103,42 @@ class Entity {
      * @returns {boolean}
      */
     has(component) {
-        return this.hasOwnProperty(component);
+        return this._components.hasOwnProperty(component);
+    }
+
+    /**
+     * Add a component to the entity.
+     * @param {string} component
+     */
+    add(component) {
+        this._nextComponents[component] = null;
+    }
+
+    /**
+     * Remove a component from the entity.
+     * @param {string} component
+     */
+    remove(component) {
+        delete this._nextComponents[component];
+    }
+
+    /**
+     * Get a property of a component in the entity.
+     * @param {string} component
+     * @param {string} property
+     * @returns {*}
+     */
+    get(component, property) {
+        return this._components[component][property];
+    }
+
+    /**
+     * Set a property of a component in the entity.
+     * @param {string} component
+     * @param {string} property
+     * @param {*} value
+     */
+    set(component, property, value) {
+        this._nextComponents[component][property] = value;
     }
 }
