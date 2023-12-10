@@ -2,8 +2,15 @@
  * A world consisting of layers of entities.
  */
 export class LayeredWorld {
+    /**
+     * The total number of entities in the world.
+     * @readonly
+     */
+    entityCount = 0;
+
     #layers;
     #nextLayers;
+    #nextEntityCount;
 
     constructor() {
         this.#layers = new Map();
@@ -18,6 +25,7 @@ export class LayeredWorld {
     createEntity(layer, components) {
         this.#pokeLayer(layer);
         this.#nextLayers.get(layer).add(new Entity(layer, components));
+        this.#nextEntityCount++;
     }
 
     /**
@@ -26,6 +34,7 @@ export class LayeredWorld {
      */
     destroyEntity(entity) {
         this.#nextLayers.get(entity.layer).delete(entity);
+        this.#nextEntityCount--;
     }
 
     /**
@@ -73,6 +82,7 @@ export class LayeredWorld {
         this.forEachEntity((entity) => {
             entity.applyChanges();
         });
+        this.entityCount = this.#nextEntityCount;
     }
 
     #pokeLayer(layer) {
