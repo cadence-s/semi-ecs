@@ -47,6 +47,7 @@ export class LayeredWorld {
         this.destroyEntity(entity);
         entity.nextLayer = targetLayer;
         this.#nextLayers.get(targetLayer).add(entity);
+        this.#nextEntityCount++;
     }
 
     /**
