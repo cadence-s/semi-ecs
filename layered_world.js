@@ -45,7 +45,7 @@ export class LayeredWorld {
      * @param {(entity: Entity) => void} fn
      */
     forEachEntity(fn) {
-        this.#layers.values().forEach((layer) => {
+        this.#layers.forEach((layer) => {
             layer.forEach(fn);
         });
     }
