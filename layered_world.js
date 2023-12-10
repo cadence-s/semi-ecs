@@ -51,12 +51,14 @@ export class LayeredWorld {
     }
 
     /**
-     * Execute a function for each entity in a layer.
-     * @param {*} layer
+     * Execute a function for each entity in the given layers.
      * @param {(entity: Entity) => void} fn
+     * @param  {...*} layers 
      */
-    forEachEntityIn(layer, fn) {
-        this.#layers.get(layer).forEach(fn);
+    forEachEntityIn(fn, ...layers) {
+        layers.forEach((layer) => {
+            this.#layers.get(layer).forEach(fn);
+        });
     }
 
     /**
