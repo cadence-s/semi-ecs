@@ -5,7 +5,7 @@ export class LayeredWorld {
     #layers;
 
     /**
-     * @param {Map<string, object>} components 
+     * @param {Map<string, object>} components
      */
     constructor(components) {
         this.components = components;
@@ -24,7 +24,7 @@ export class LayeredWorld {
 
     /**
      * Permanently remove an entity from the world.
-     * @param {*} entity 
+     * @param {*} entity
      */
     destroyEntity(entity) {
         this.#layers.get(entity._layer).delete(entity);
@@ -42,8 +42,8 @@ export class LayeredWorld {
 
     /**
      * Execute a function for each entity in a layer.
-     * @param {*} layer 
-     * @param {(entity: Entity) => void} fn 
+     * @param {*} layer
+     * @param {(entity: Entity) => void} fn
      */
     forEachEntityIn(layer, fn) {
         this.#layers.get(layer).forEach(fn);
@@ -62,8 +62,8 @@ export class LayeredWorld {
 class Entity {
     /**
      * Do not use this constructor. Instead, create entities in a world with createEntity().
-     * @param {*} layer 
-     * @param {Map<string, object>} components 
+     * @param {*} layer
+     * @param {Map<string, object>} components
      */
     constructor(layer, components) {
         this._layer = layer;
@@ -72,7 +72,7 @@ class Entity {
 
     /**
      * Check if the entity has a component.
-     * @param {*} component 
+     * @param {string} component
      * @returns {boolean}
      */
     has(component) {
