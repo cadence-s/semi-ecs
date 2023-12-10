@@ -22,10 +22,10 @@ export class LayeredWorld {
 
     /**
      * Permanently remove an entity from the world.
-     * @param {*} entity
+     * @param {Entity} entity
      */
     destroyEntity(entity) {
-        this.#nextLayers.get(entity._layer).delete(entity);
+        this.#nextLayers.get(entity.layer).delete(entity);
     }
 
     /**
@@ -36,7 +36,7 @@ export class LayeredWorld {
     moveEntity(entity, targetLayer) {
         this.#pokeLayer(targetLayer);
         this.destroyEntity(entity);
-        entity._layer = targetLayer;
+        entity.layer = targetLayer;
         this.#nextLayers.get(targetLayer).add(entity);
     }
 
@@ -87,10 +87,10 @@ export class LayeredWorld {
  */
 class Entity {
     /**
-     * The layer this entity is in. Do not write to this property.
+     * The layer this entity is in.
      * @readonly
      */
-    _layer;
+    layer;
 
     #components;
     #nextComponents;
@@ -101,7 +101,7 @@ class Entity {
      * @param {Map<string, object>} components
      */
     constructor(layer, components) {
-        this._layer = layer;
+        this.layer = layer;
         this.#components = {};
         this.#nextComponents = components;
     }
