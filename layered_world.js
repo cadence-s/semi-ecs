@@ -8,24 +8,29 @@ export class LayeredWorld {
      */
     entityCount = 0;
 
-    #layers;
-    #nextLayers;
+    #componentPool;
+    #layers = new Map();
+    #nextLayers = new Map();
     #nextEntityCount = 0;
 
-    constructor() {
-        this.#layers = new Map();
-        this.#nextLayers = new Map();
+    /**
+     * @param {ComponentMap} componentPool All the components that exist in the world, with default property values.
+     */
+    constructor(componentPool) {
+        this.#componentPool = componentPool;
     }
 
     /**
      * Create a new entity in the world.
      * @param {*} layer The layer to place the new entity in.
-     * @param {Map<string, object>} components The components that make up the entity.
+     * @returns {Entity} The newly created entity.
      */
-    createEntity(layer, components) {
+    createEntity(layer) {
+        let entity = new Entity(layer, this.#componentPool);
         this.#pokeLayer(layer);
-        this.#nextLayers.get(layer).add(new Entity(layer, components));
+        this.#nextLayers.get(layer).add(entity);
         this.#nextEntityCount++;
+        return entity
     }
 
     /**
@@ -34,6 +39,7 @@ export class LayeredWorld {
      */
     destroyEntity(entity) {
         this.#nextLayers.get(entity.layer).delete(entity);
+        entity._nextLayer = null;
         this.#nextEntityCount--;
     }
 
@@ -45,7 +51,7 @@ export class LayeredWorld {
     moveEntity(entity, targetLayer) {
         this.#pokeLayer(targetLayer);
         this.destroyEntity(entity);
-        entity.nextLayer = targetLayer;
+        entity._nextLayer = targetLayer;
         this.#nextLayers.get(targetLayer).add(entity);
         this.#nextEntityCount++;
     }
@@ -100,6 +106,29 @@ export class LayeredWorld {
 }
 
 /**
+ * A mapping of components with associated properties.
+ */
+export class ComponentMap extends Map {
+    /**
+     * @param {object} obj An object to build a ComponentMap from.
+     */
+    static fromObj(obj) {
+        let componentMap = new ComponentMap();
+        Object.entries(obj).forEach(([component, properties]) => {
+            if (typeof properties !== 'object') {
+                throw new Error(`Component "${component}" contains type "${typeof properties}" instead of object`);
+            }
+            if (properties === null) {
+                properties = new Map();
+            } else {
+                componentMap.set(component, new Map(Object.entries(properties)));
+            }
+        });
+        return componentMap;
+    }
+}
+
+/**
  * An entity in a LayeredWorld.
  */
 class Entity {
@@ -107,26 +136,27 @@ class Entity {
      * The layer the entity is in.
      * @readonly
      */
-    layer;
+    layer = null;
     /**
      * The layer the entity will be in after changes are applied.
+     * 
+     * Avoid using this property. Instead, applyChanges() and use Entity.layer.
      * @readonly
      */
-    nextLayer;
+    _nextLayer;
 
-    #components;
-    #nextComponents;
+    #componentPool;
+    #components = new ComponentMap();
+    #nextComponents = new ComponentMap();
 
     /**
      * Do not use this constructor. Instead, create entities in a world with LayeredWorld.createEntity().
      * @param {*} layer
-     * @param {Map<string, object>} components
+     * @param {ComponentMap} componentPool
      */
-    constructor(layer, components) {
-        this.layer = null;
-        this.nextLayer = layer;
-        this.#components = {};
-        this.#nextComponents = components;
+    constructor(layer, componentPool) {
+        this._nextLayer = layer;
+        this.#componentPool = componentPool;
     }
 
     /**
@@ -135,23 +165,40 @@ class Entity {
      * @returns {boolean}
      */
     has(component) {
-        return this.#components.hasOwnProperty(component);
+        return this.#components.has(component);
     }
 
     /**
-     * Add a component to the entity.
-     * @param {string} component
+     * Merge all components from a ComponentMap into the entity.
+     * @param {ComponentMap} componentMap
      */
-    add(component) {
-        this.#nextComponents[component] = null;
+    merge(componentMap) {
+        componentMap.forEach((properties, component) => {
+            this.#validateComponentInPool(component);
+            this.#nextComponents.set(component, properties);
+        });
     }
 
     /**
-     * Remove a component from the entity.
-     * @param {string} component
+     * Add components with default properties to the entity.
+     * @param {string} components
      */
-    remove(component) {
-        delete this.#nextComponents[component];
+    add(...components) {
+        components.forEach((component) => {
+            this.#validateComponentInPool(component);
+            this.#nextComponents.set(component, new Map());
+        });
+    }
+
+    /**
+     * Remove components from the entity.
+     * @param {...string} components
+     */
+    remove(...components) {
+        components.forEach((component) => {
+            this.#validateComponentInEntity(component);
+            this.#nextComponents.delete(component);
+        });
     }
 
     /**
@@ -161,7 +208,14 @@ class Entity {
      * @returns {*}
      */
     get(component, property) {
-        return this.#components[component][property];
+        this.#validateComponentInEntity(component);
+        this.#validateProperty(component, property);
+        let propertyMap = this.#components.get(component);
+        if (propertyMap.has(property)) {
+            return propertyMap.get(property);
+        } else {
+            return this.#componentPool.get(component).get(property);
+        }
     }
 
     /**
@@ -171,7 +225,9 @@ class Entity {
      * @param {*} value
      */
     set(component, property, value) {
-        this.#nextComponents[component][property] = value;
+        this.#validateComponentInEntity(component);
+        this.#validateProperty(component, property);
+        this.#nextComponents.get(component).set(property, value);
     }
 
     /**
@@ -180,7 +236,39 @@ class Entity {
      * Prefer using LayeredWorld.applyChanges() rather than this method.
      */
     applyChanges() {
-        this.layer = this.nextLayer;
+        this.layer = this._nextLayer;
         this.#components = this.#nextComponents;
+        this.#nextComponents = new Map();
+        this.#components.forEach((propertyMap, component) => {
+            this.#nextComponents.set(component, new Map(propertyMap));
+        });
+    }
+
+    /**
+     * @param {string} component
+     */
+    #validateComponentInPool(component) {
+        if (!this.#componentPool.has(component)) {
+            throw new Error(`Component "${component}" is not in world's component pool`);
+        }
+    }
+
+    /**
+     * @param {string} component
+     */
+    #validateComponentInEntity(component) {
+        if (!this.#components.has(component)) {
+            throw new Error(`Component "${component}" is not in entity`);
+        }
+    }
+
+    /**
+     * @param {string} component
+     * @param {string} property
+     */
+    #validateProperty(component, property) {
+        if (!this.#componentPool.get(component).has(property)) {
+            throw new Error(`Component "${component}" does not have property "${property}"`);
+        }
     }
 }
